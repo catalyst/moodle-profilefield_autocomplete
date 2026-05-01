@@ -23,11 +23,16 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class profile_field_autocomplete extends profile_field_base {
+    /**
+     * @var array $keyvaluemap Map of option keys to values.
+     */
+    public $keyvaluemap = [];
+
     /** @var array $options */
     public $options;
 
-    /** @var int $datakey */
-    public $datakey;
+    /** @var array $datakey */
+    public $datakey = [];
 
     /** @var bool $multiple */
     public $multiple;
@@ -48,28 +53,50 @@ class profile_field_autocomplete extends profile_field_base {
         parent::__construct($fieldid, $userid, $fielddata);
 
         // Param 1 for menu type is the options.
-        if (isset($this->field->param1)) {
-            $options = explode("\n", $this->field->param1);
-        } else {
-            $options = array();
-        }
-        $this->options = array();
+        $this->options = [];
         if (!empty($this->field->required)) {
             $this->options[''] = get_string('choose') . '...';
         }
-        foreach ($options as $key => $option) {
-            // Multilang formatting with filters.
-            $this->options[$option] = format_string($option, true, ['context' => context_system::instance()]);
+        $parsed = \profilefield_autocomplete\options::parse($this->field->param1 ?? '');
+        foreach ($parsed as ['key' => $key, 'label' => $label]) {
+            $this->options[$key] = format_string($label, true, ['context' => context_system::instance()]);
+            $this->keyvaluemap[$key] = $label;
         }
 
         if (isset($this->field->param2)) {
             $this->multiple = $this->field->param2 == 1;
         }
 
-        // Set the data key.
+        // Set the data key (for display in form, must be value(s)).
         if ($this->data !== null) {
-            $this->datakey = explode(', ', $this->data);
+            $datavals = explode(', ', $this->data);
+            foreach ($datavals as $val) {
+                // Always use the value as the key for the autocomplete input.
+                $this->datakey[] = $val;
+            }
         }
+    }
+
+    /**
+     * Returns the display value for the profile field (for user profile page, etc).
+     *
+     * @return string
+     */
+    public function display_data() {
+        if (empty($this->data)) {
+            return '';
+        }
+        $datavals = explode(', ', $this->data);
+        $labels = [];
+        foreach ($datavals as $val) {
+            if (isset($this->keyvaluemap[$val])) {
+                $labels[] = $this->keyvaluemap[$val];
+            } else {
+                // Fallback for legacy/unknown values.
+                $labels[] = $val;
+            }
+        }
+        return implode(', ', $labels);
     }
 
     /**
@@ -80,7 +107,7 @@ class profile_field_autocomplete extends profile_field_base {
      */
     public function edit_field_add($mform) {
         $mform->addElement('autocomplete', $this->inputname, format_string($this->field->name), $this->options, [
-            'multiple' => $this->multiple
+            'multiple' => $this->multiple,
         ]);
     }
 
@@ -92,13 +119,14 @@ class profile_field_autocomplete extends profile_field_base {
      */
     public function edit_field_set_default($mform) {
         $key = $this->field->defaultdata;
-
-        if (isset($this->options[$key]) || ($key = array_search($key, $this->options)) !== false) {
+        // Default can be a value or a key.
+        if (isset($this->keyvaluemap) && ($k = array_search($key, $this->keyvaluemap)) !== false) {
+            $defaultkey = $k;
+        } else if (isset($this->options[$key])) {
             $defaultkey = $key;
         } else {
             $defaultkey = '';
         }
-
         $mform->setDefault($this->inputname, $defaultkey);
     }
 
@@ -113,21 +141,32 @@ class profile_field_autocomplete extends profile_field_base {
      * @return mixed Data or null
      */
     public function edit_save_data_preprocess($data, $datarecord) {
-
         // If the field is not multiple, create an array with the unique value.
         if (!is_array($data)) {
-            $data = array($data);
-        }
-
-        // Check if all options are valid.
-        foreach ($data as $option) {
-            if (!isset($this->options[$option])) {
-                return null;
+            // Attempt to split by comma if string contains commas.
+            if (is_string($data) && strpos($data, ',') !== false) {
+                $data = array_map('trim', explode(',', $data));
+            } else {
+                $data = [$data];
             }
         }
-
+        $values = [];
+        foreach ($data as $option) {
+            // Option should be the value (first part before ';').
+            if (!array_key_exists($option, $this->options)) {
+                // Try to match by label (for legacy/webservice input).
+                $found = array_search($option, $this->keyvaluemap);
+                if ($found !== false) {
+                    $values[] = $found;
+                } else {
+                    return null;
+                }
+            } else {
+                $values[] = $option;
+            }
+        }
         // Convert values into string to store it in database.
-        return implode(', ', $data);
+        return implode(', ', $values);
     }
 
     /**
@@ -154,7 +193,7 @@ class profile_field_autocomplete extends profile_field_base {
             return;
         }
 
-        if ($this->is_locked() and !has_capability('moodle/user:update', context_system::instance())) {
+        if ($this->is_locked() && !has_capability('moodle/user:update', context_system::instance())) {
             $mform->hardFreeze($this->inputname);
             $mform->setConstant($this->inputname, format_string($this->datakey));
         }
@@ -167,25 +206,23 @@ class profile_field_autocomplete extends profile_field_base {
      * @return int options key for the menu
      */
     public function convert_external_data($value) {
-
         if (is_array($value)) {
             $retval = [];
             foreach ($value as $item) {
-                if (isset($this->options[$item])) {
+                if (array_key_exists($item, $this->options)) {
                     $retval[] = $item;
-                } else if ($itemsearch = array_search($item, $this->options)) {
-                    $retval[] = $itemsearch;
+                } else if (($val = array_search($item, $this->keyvaluemap)) !== false) {
+                    $retval[] = $val;
                 }
             }
             $retval = !empty($retval) ? $retval : false;
         } else {
-            if (isset($this->options[$value])) {
+            if (array_key_exists($value, $this->options)) {
                 $retval = $value;
             } else {
-                $retval = array_search($value, $this->options);
+                $retval = array_search($value, $this->keyvaluemap);
             }
         }
-
         // If value is not found in options then return null, so that it can be handled
         // later by edit_save_data_preprocess.
         if ($retval === false) {
@@ -202,6 +239,6 @@ class profile_field_autocomplete extends profile_field_base {
      * @since Moodle 3.2
      */
     public function get_field_properties() {
-        return array(PARAM_TEXT, NULL_NOT_ALLOWED);
+        return [PARAM_TEXT, NULL_NOT_ALLOWED];
     }
 }

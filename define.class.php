@@ -35,8 +35,11 @@ class profile_define_autocomplete extends profile_define_base {
      */
     public function define_form_specific($form) {
         // Param 1 for menu type contains the options.
-        $form->addElement('textarea', 'param1', get_string('profilemenuoptions', 'admin'), array('rows' => 6, 'cols' => 40));
+        $form->addElement('textarea', 'param1', get_string('profilemenuoptions', 'admin'), ['rows' => 6, 'cols' => 40]);
         $form->setType('param1', PARAM_TEXT);
+
+        // Add help for key;value format.
+        $form->addElement('static', 'param1_help', '', get_string('profilemenuoptions_help', 'profilefield_autocomplete'));
 
         // Default data.
         $form->addElement('text', 'defaultdata', get_string('profiledefaultdata', 'admin'), 'size="50"');
@@ -54,18 +57,25 @@ class profile_define_autocomplete extends profile_define_base {
      * @throws coding_exception
      */
     public function define_validate_specific($data, $files) {
-        $err = array();
+        $err = [];
 
-        $data->param1 = str_replace("\r", '', $data->param1);
+        $data = (object) $data;
+
+        $parsedoptions = [];
+        foreach (\profilefield_autocomplete\options::parse($data->param1) as ['key' => $key, 'label' => $label]) {
+            $parsedoptions[$key] = $label;
+        }
 
         // Check that we have at least 2 options.
-        if (($options = explode("\n", $data->param1)) === false) {
-            $err['param1'] = get_string('profilemenunooptions', 'admin');
-        } else if (count($options) < 2) {
+        if (count($parsedoptions) < 2) {
             $err['param1'] = get_string('profilemenutoofewoptions', 'admin');
-        } else if (!empty($data->defaultdata) and !in_array($data->defaultdata, $options)) {
-            // Check the default data exists in the options.
-            $err['defaultdata'] = get_string('profilemenudefaultnotinoptions', 'admin');
+        } else if (!empty($data->defaultdata)) {
+            // Check the default data exists in the options (either as key or value).
+            $defaultinlabels = in_array($data->defaultdata, $parsedoptions);
+            $defaultinkeys = in_array($data->defaultdata, array_keys($parsedoptions));
+            if (!$defaultinlabels && !$defaultinkeys) {
+                $err['defaultdata'] = get_string('profilemenudefaultnotinoptions', 'admin');
+            }
         }
         return $err;
     }

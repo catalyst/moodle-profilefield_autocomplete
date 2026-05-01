@@ -23,5 +23,5 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'Autocomplétion';
 $string['multiple']   = 'Choix multiple';
+$string['pluginname'] = 'Autocomplétion';

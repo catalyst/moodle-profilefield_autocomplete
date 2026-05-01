@@ -23,13 +23,13 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['pluginname'] = 'Autocomplete input';
 $string['multiple']   = 'Multiple values';
-
-$string['privacy:metadata:profilefield_autocomplete:userid']
-                                                                       = 'The ID of the user whose data is stored by the autocomplete user profile field';
-$string['privacy:metadata:profilefield_autocomplete:fieldid']          = 'The ID of the profile field';
+$string['pluginname'] = 'Autocomplete input';
 $string['privacy:metadata:profilefield_autocomplete:data']             = 'Autocomplete input user profile field user data';
 $string['privacy:metadata:profilefield_autocomplete:dataformat']
                                                                        = 'The format of the autocomplete input user profile field user data';
+$string['privacy:metadata:profilefield_autocomplete:fieldid']          = 'The ID of the profile field';
 $string['privacy:metadata:profilefield_autocomplete:tableexplanation'] = 'Additional profile data';
+$string['privacy:metadata:profilefield_autocomplete:userid']
+                                                                       = 'The ID of the user whose data is stored by the autocomplete user profile field';
+$string['profilemenuoptions_help'] = 'Enter one option per line. You may optionally use a ";" character to separate key-value pairs. The user will be shown the value, but the key will be stored in the database.';
