@@ -25,11 +25,9 @@
 
 namespace profilefield_autocomplete\privacy;
 
-defined('MOODLE_INTERNAL') || die();
-
-use \core_privacy\local\metadata\collection;
-use \core_privacy\local\request\contextlist;
-use \core_privacy\local\request\approved_contextlist;
+use core_privacy\local\metadata\collection;
+use core_privacy\local\request\contextlist;
+use core_privacy\local\request\approved_contextlist;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\approved_userlist;
 
@@ -40,10 +38,9 @@ use core_privacy\local\request\approved_userlist;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class provider implements
-        \core_privacy\local\metadata\provider,
-        \core_privacy\local\request\core_userlist_provider,
-        \core_privacy\local\request\plugin\provider {
-
+    \core_privacy\local\metadata\provider,
+    \core_privacy\local\request\core_userlist_provider,
+    \core_privacy\local\request\plugin\provider {
     /**
      * Returns meta data about this system.
      *
@@ -55,7 +52,7 @@ class provider implements
                 'userid'     => 'privacy:metadata:profilefield_autocomplete:userid',
                 'fieldid'    => 'privacy:metadata:profilefield_autocomplete:fieldid',
                 'data'       => 'privacy:metadata:profilefield_autocomplete:data',
-                'dataformat' => 'privacy:metadata:profilefield_autocomplete:dataformat'
+                'dataformat' => 'privacy:metadata:profilefield_autocomplete:dataformat',
         ], 'privacy:metadata:profilefield_autocomplete:tableexplanation');
     }
 
@@ -76,7 +73,7 @@ class provider implements
         $params      = [
                 'userid'       => $userid,
                 'contextlevel' => CONTEXT_USER,
-                'datatype'     => 'autocomplete'
+                'datatype'     => 'autocomplete',
         ];
         $contextlist = new contextlist();
         $contextlist->add_from_sql($sql, $params);
@@ -105,7 +102,7 @@ class provider implements
 
         $params = [
                 'userid'   => $context->instanceid,
-                'datatype' => 'autocomplete'
+                'datatype' => 'autocomplete',
         ];
 
         $userlist->add_from_sql('userid', $sql, $params);
@@ -127,10 +124,10 @@ class provider implements
                     $data = (object) [
                             'name'        => $result->name,
                             'description' => $result->description,
-                            'data'        => $result->data
+                            'data'        => $result->data,
                     ];
                     \core_privacy\local\request\writer::with_context($context)->export_data([
-                            get_string('pluginname', 'profilefield_autocomplete')
+                            get_string('pluginname', 'profilefield_autocomplete'),
                     ], $data);
                 }
             }
@@ -187,7 +184,7 @@ class provider implements
 
         $params = [
                 'userid'   => $userid,
-                'datatype' => 'autocomplete'
+                'datatype' => 'autocomplete',
         ];
 
         $DB->delete_records_select('user_info_data', "fieldid IN (
@@ -211,7 +208,7 @@ class provider implements
                        AND uif.datatype = :datatype";
         $params = [
                 'userid'   => $userid,
-                'datatype' => 'autocomplete'
+                'datatype' => 'autocomplete',
         ];
 
         return $DB->get_records_sql($sql, $params);
